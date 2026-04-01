@@ -1,0 +1,1279 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>MTG Panel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  :root {
+    --bg-0: #070b12;
+    --bg-1: #0d1420;
+    --bg-2: #131d2e;
+    --bg-3: #1a2640;
+    --border: #1e3050;
+    --accent: #00d4ff;
+    --accent-dim: rgba(0,212,255,0.12);
+    --accent-glow: rgba(0,212,255,0.4);
+    --green: #00ff88;
+    --green-dim: rgba(0,255,136,0.12);
+    --red: #ff4566;
+    --red-dim: rgba(255,69,102,0.12);
+    --yellow: #ffd166;
+    --text-1: #e8edf5;
+    --text-2: #7a92b0;
+    --text-3: #4a6080;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  
+  body {
+    background: var(--bg-0);
+    color: var(--text-1);
+    font-family: 'Space Grotesk', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Grid bg */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: 
+      linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .mono { font-family: 'JetBrains Mono', monospace; }
+
+  /* Login */
+  #login-screen {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    background: var(--bg-0);
+  }
+
+  .login-card {
+    background: var(--bg-1);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 48px;
+    width: 420px;
+    max-width: 95vw;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .login-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  }
+
+  .login-logo {
+    width: 56px; height: 56px;
+    background: var(--accent-dim);
+    border: 1px solid var(--accent);
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 24px;
+    font-size: 24px;
+  }
+
+  .input-field {
+    width: 100%;
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 16px;
+    color: var(--text-1);
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    margin-top: 8px;
+  }
+
+  .input-field:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-dim);
+  }
+
+  .btn-primary {
+    width: 100%;
+    background: var(--accent);
+    color: #000;
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 14px;
+    padding: 13px;
+    border-radius: 10px;
+    border: none;
+    cursor: pointer;
+    transition: opacity 0.2s, transform 0.1s, box-shadow 0.2s;
+    letter-spacing: 0.5px;
+  }
+
+  .btn-primary:hover { 
+    opacity: 0.9;
+    box-shadow: 0 0 20px var(--accent-glow);
+  }
+  .btn-primary:active { transform: scale(0.98); }
+  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* Dashboard */
+  #dashboard { display: none; position: relative; z-index: 1; }
+
+  .header {
+    background: rgba(13,20,32,0.95);
+    border-bottom: 1px solid var(--border);
+    padding: 0 32px;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    backdrop-filter: blur(20px);
+  }
+
+  .header-logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 700;
+    font-size: 18px;
+    letter-spacing: -0.3px;
+  }
+
+  .logo-icon {
+    width: 36px; height: 36px;
+    background: var(--accent-dim);
+    border: 1px solid var(--accent);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+  }
+
+  .status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+  }
+
+  .status-badge.active {
+    background: var(--green-dim);
+    border: 1px solid rgba(0,255,136,0.3);
+    color: var(--green);
+  }
+
+  .status-badge.inactive {
+    background: var(--red-dim);
+    border: 1px solid rgba(255,69,102,0.3);
+    color: var(--red);
+  }
+
+  .dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    animation: pulse 2s infinite;
+  }
+
+  .dot.green { background: var(--green); box-shadow: 0 0 6px var(--green); }
+  .dot.red { background: var(--red); }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  .main-content {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 32px;
+    display: grid;
+    grid-template-columns: 1fr 380px;
+    gap: 24px;
+  }
+
+  @media (max-width: 900px) {
+    .main-content { grid-template-columns: 1fr; padding: 16px; }
+    .header { padding: 0 16px; }
+  }
+
+  .card {
+    background: var(--bg-1);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .card-glow::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--accent-dim), transparent);
+  }
+
+  .card-title {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text-3);
+    margin-bottom: 16px;
+  }
+
+  /* Metric Cards */
+  .metrics-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+
+  .metric-card {
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+  }
+
+  .metric-label {
+    font-size: 11px;
+    color: var(--text-3);
+    font-weight: 500;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  .metric-value {
+    font-size: 28px;
+    font-weight: 700;
+    font-family: 'JetBrains Mono', monospace;
+    line-height: 1;
+  }
+
+  .metric-sub {
+    font-size: 11px;
+    color: var(--text-3);
+    margin-top: 4px;
+  }
+
+  /* Progress Bar */
+  .progress-bar {
+    height: 4px;
+    background: var(--bg-3);
+    border-radius: 2px;
+    margin-top: 10px;
+    overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.5s ease;
+    background: linear-gradient(90deg, var(--accent), #0088ff);
+  }
+
+  .progress-fill.warn { background: linear-gradient(90deg, var(--yellow), #ff8800); }
+  .progress-fill.danger { background: linear-gradient(90deg, var(--red), #ff0044); }
+
+  /* Config Form */
+  .form-group { margin-bottom: 16px; }
+
+  .form-label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-2);
+    margin-bottom: 6px;
+    letter-spacing: 0.3px;
+  }
+
+  .form-input {
+    width: 100%;
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 11px 14px;
+    color: var(--text-1);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+
+  .form-input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-dim);
+  }
+
+  .form-select {
+    width: 100%;
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 11px 14px;
+    color: var(--text-1);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    outline: none;
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%234a6080' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 16px;
+    transition: border-color 0.2s;
+  }
+
+  .form-select:focus { border-color: var(--accent); }
+
+  .port-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 8px;
+    align-items: end;
+  }
+
+  .btn-check {
+    background: var(--bg-3);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 11px 14px;
+    color: var(--text-2);
+    font-size: 12px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s;
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 600;
+  }
+
+  .btn-check:hover { border-color: var(--accent); color: var(--accent); }
+
+  .btn-apply {
+    width: 100%;
+    background: linear-gradient(135deg, #00c4ef, #0066ff);
+    color: #fff;
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 14px;
+    padding: 13px;
+    border-radius: 10px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.3px;
+    margin-top: 8px;
+  }
+
+  .btn-apply:hover {
+    box-shadow: 0 4px 20px rgba(0,100,255,0.4);
+    transform: translateY(-1px);
+  }
+  .btn-apply:active { transform: translateY(0); }
+  .btn-apply:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+  .btn-copy {
+    width: 100%;
+    background: var(--green-dim);
+    border: 1px solid rgba(0,255,136,0.3);
+    color: var(--green);
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 13px;
+    padding: 11px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-top: 8px;
+  }
+
+  .btn-copy:hover { background: rgba(0,255,136,0.2); box-shadow: 0 0 12px rgba(0,255,136,0.2); }
+
+  .btn-danger {
+    flex: 1;
+    background: var(--red-dim);
+    border: 1px solid rgba(255,69,102,0.3);
+    color: var(--red);
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 600;
+    font-size: 12px;
+    padding: 9px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .btn-danger:hover { background: rgba(255,69,102,0.2); }
+
+  .btn-warn {
+    flex: 1;
+    background: rgba(255,209,102,0.1);
+    border: 1px solid rgba(255,209,102,0.3);
+    color: var(--yellow);
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 600;
+    font-size: 12px;
+    padding: 9px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .btn-warn:hover { background: rgba(255,209,102,0.2); }
+
+  /* Tg Link Box */
+  .tg-link-box {
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px;
+    margin-top: 8px;
+    word-break: break-all;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-2);
+    line-height: 1.6;
+  }
+
+  /* Log Window */
+  .log-window {
+    background: #050810;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    height: 340px;
+    overflow-y: auto;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    line-height: 1.7;
+    position: relative;
+  }
+
+  .log-window::-webkit-scrollbar { width: 4px; }
+  .log-window::-webkit-scrollbar-track { background: transparent; }
+  .log-window::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .log-line { color: #5a7fa0; }
+  .log-line.error { color: #ff6680; }
+  .log-line.warn { color: #ffd166; }
+  .log-line.info { color: #7ab0d0; }
+  .log-line.key { color: #00d4ff; }
+
+  .log-controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+
+  .live-indicator {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--text-3);
+  }
+
+  .live-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 6px var(--green);
+    animation: pulse 1.5s infinite;
+  }
+
+  .btn-refresh {
+    background: var(--bg-3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 5px 12px;
+    color: var(--text-2);
+    font-size: 11px;
+    cursor: pointer;
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 500;
+    transition: all 0.2s;
+  }
+
+  .btn-refresh:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* Toast */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    padding: 14px 20px;
+    border-radius: 12px;
+    font-size: 13px;
+    font-weight: 600;
+    z-index: 200;
+    animation: slideIn 0.3s ease;
+    max-width: 380px;
+    border: 1px solid transparent;
+  }
+
+  .toast.success {
+    background: rgba(0,255,136,0.12);
+    border-color: rgba(0,255,136,0.3);
+    color: var(--green);
+  }
+
+  .toast.error {
+    background: rgba(255,69,102,0.12);
+    border-color: rgba(255,69,102,0.3);
+    color: var(--red);
+  }
+
+  .toast.info {
+    background: rgba(0,212,255,0.12);
+    border-color: rgba(0,212,255,0.3);
+    color: var(--accent);
+  }
+
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Port status indicator */
+  .port-status {
+    font-size: 11px;
+    margin-top: 4px;
+    font-family: 'JetBrains Mono', monospace;
+    transition: color 0.2s;
+  }
+
+  .port-status.ok { color: var(--green); }
+  .port-status.err { color: var(--red); }
+
+  /* Secret display */
+  .secret-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 12px;
+    margin-top: 8px;
+  }
+
+  .secret-value {
+    flex: 1;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--accent);
+    word-break: break-all;
+    line-height: 1.5;
+  }
+
+  .btn-regen {
+    background: var(--bg-3);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    padding: 5px 9px;
+    color: var(--text-3);
+    font-size: 11px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s;
+    font-family: 'Space Grotesk', sans-serif;
+  }
+
+  .btn-regen:hover { border-color: var(--accent); color: var(--accent); }
+
+  .divider {
+    height: 1px;
+    background: var(--border);
+    margin: 20px 0;
+  }
+
+  .tag {
+    display: inline-block;
+    background: var(--bg-3);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 2px 8px;
+    font-size: 10px;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--text-3);
+  }
+
+  .update-section {
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+  }
+
+  .btn-update {
+    width: 100%;
+    background: rgba(255,209,102,0.1);
+    border: 1px solid rgba(255,209,102,0.3);
+    color: var(--yellow);
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 600;
+    font-size: 12px;
+    padding: 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-top: 10px;
+  }
+
+  .btn-update:hover { background: rgba(255,209,102,0.2); }
+
+  .spinner {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .error-msg {
+    background: var(--red-dim);
+    border: 1px solid rgba(255,69,102,0.3);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 12px;
+    color: var(--red);
+    margin-top: 8px;
+    display: none;
+  }
+</style>
+</head>
+<body>
+
+<!-- ─── LOGIN ─────────────────────────────────────────────────────── -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">🔒</div>
+    <h1 style="font-size:22px;font-weight:700;margin-bottom:6px;letter-spacing:-0.3px">MTG Panel</h1>
+    <p style="font-size:13px;color:var(--text-3);margin-bottom:32px">MTProto Proxy Management</p>
+
+    <div class="form-group">
+      <label class="form-label">ЛОГИН</label>
+      <input type="text" id="login-username" class="input-field" placeholder="Username" autocomplete="username"/>
+    </div>
+    <div class="form-group" style="margin-bottom:24px">
+      <label class="form-label">ПАРОЛЬ</label>
+      <input type="password" id="login-password" class="input-field" placeholder="Password" autocomplete="current-password"/>
+    </div>
+
+    <div class="error-msg" id="login-error">⚠️ Неверный логин или пароль</div>
+
+    <button class="btn-primary" id="login-btn" onclick="doLogin()">
+      Войти в панель
+    </button>
+
+    <p style="font-size:11px;color:var(--text-3);text-align:center;margin-top:20px">
+      MTG Panel v1.0 · Secure Management Interface
+    </p>
+  </div>
+</div>
+
+<!-- ─── DASHBOARD ──────────────────────────────────────────────────── -->
+<div id="dashboard">
+
+  <!-- Header -->
+  <header class="header">
+    <div class="header-logo">
+      <div class="logo-icon">⚡</div>
+      <span>MTG Panel</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:16px">
+      <span id="header-status-badge" class="status-badge inactive">
+        <span class="dot red" id="header-dot"></span>
+        <span id="header-status-text">Загрузка...</span>
+      </span>
+      <span style="font-size:12px;color:var(--text-3)" id="server-ip-display"></span>
+      <button onclick="doLogout()" style="background:var(--bg-3);border:1px solid var(--border);border-radius:8px;padding:6px 14px;color:var(--text-2);font-size:12px;cursor:pointer;font-family:'Space Grotesk',sans-serif;">
+        Выход
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Grid -->
+  <div class="main-content">
+
+    <!-- Left Column -->
+    <div>
+
+      <!-- Metrics -->
+      <div class="metrics-row">
+        <div class="metric-card">
+          <div class="metric-label">CPU</div>
+          <div class="metric-value" id="cpu-value" style="color:var(--accent)">—%</div>
+          <div class="progress-bar">
+            <div class="progress-fill" id="cpu-bar" style="width:0%"></div>
+          </div>
+          <div class="metric-sub">Процессор</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">RAM</div>
+          <div class="metric-value" id="ram-value" style="color:#a78bfa">—%</div>
+          <div class="progress-bar">
+            <div class="progress-fill" id="ram-bar" style="width:0%;background:linear-gradient(90deg,#a78bfa,#7c3aed)"></div>
+          </div>
+          <div class="metric-sub" id="ram-detail">— / — GB</div>
+        </div>
+      </div>
+
+      <!-- Service Controls -->
+      <div class="card card-glow" style="margin-bottom:24px">
+        <div class="card-title">Управление службой</div>
+        <div style="display:flex;gap:8px">
+          <button class="btn-warn" onclick="serviceAction('start')">▶ Запустить</button>
+          <button class="btn-danger" onclick="serviceAction('stop')">■ Остановить</button>
+          <button class="btn-warn" onclick="serviceAction('restart')" style="border-color:rgba(0,212,255,0.3);color:var(--accent);background:var(--accent-dim)">↺ Перезапуск</button>
+        </div>
+      </div>
+
+      <!-- Logs -->
+      <div class="card card-glow">
+        <div class="log-controls">
+          <div class="card-title" style="margin-bottom:0">Логи сервера (journalctl)</div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <div class="live-indicator">
+              <div class="live-dot"></div>
+              Live
+            </div>
+            <button class="btn-refresh" onclick="fetchLogs()">↻ Обновить</button>
+          </div>
+        </div>
+        <div class="log-window" id="log-output">
+          <div class="log-line">Загрузка логов...</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Right Column -->
+    <div>
+
+      <!-- Config Card -->
+      <div class="card card-glow" style="margin-bottom:24px">
+        <div class="card-title">Конфигурация прокси</div>
+
+        <!-- Port -->
+        <div class="form-group">
+          <label class="form-label">ПОРТ</label>
+          <div class="port-row">
+            <input type="number" id="conf-port" class="form-input" placeholder="443" min="1" max="65535" oninput="checkPortDebounced()"/>
+            <button class="btn-check" onclick="checkPort()">Проверить</button>
+          </div>
+          <div class="port-status" id="port-status-msg"></div>
+        </div>
+
+        <!-- Fake TLS Domain -->
+        <div class="form-group">
+          <label class="form-label">ДОМЕН МАСКИРОВКИ (FAKE-TLS)</label>
+          <select id="conf-domain-select" class="form-select" onchange="domainSelectChanged()">
+            <option value="">— Выбрать из списка —</option>
+            <option value="itunes.apple.com">itunes.apple.com ✓ Рекомендован</option>
+            <option value="cloudflare.com">cloudflare.com</option>
+            <option value="google.com">google.com</option>
+            <option value="cdn.google.com">cdn.google.com</option>
+            <option value="update.googleapis.com">update.googleapis.com</option>
+            <option value="ajax.googleapis.com">ajax.googleapis.com</option>
+            <option value="storage.googleapis.com">storage.googleapis.com</option>
+            <option value="microsoft.com">microsoft.com</option>
+            <option value="cdn.microsoft.com">cdn.microsoft.com</option>
+            <option value="officeapps.live.com">officeapps.live.com</option>
+            <option value="outlook.live.com">outlook.live.com</option>
+            <option value="akamaihd.net">akamaihd.net</option>
+            <option value="custom">✏️ Ввести вручную...</option>
+          </select>
+          <input type="text" id="conf-domain" class="form-input" placeholder="itunes.apple.com" style="margin-top:8px"/>
+        </div>
+
+        <!-- Secret -->
+        <div class="form-group">
+          <label class="form-label">СЕКРЕТНЫЙ КЛЮЧ</label>
+          <div class="secret-row">
+            <div class="secret-value mono" id="secret-display">—</div>
+            <button class="btn-regen" onclick="regenSecret()" title="Сгенерировать новый ключ">↺ Новый</button>
+          </div>
+          <input type="hidden" id="conf-secret"/>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- Apply -->
+        <button class="btn-apply" id="apply-btn" onclick="applyConfig()">
+          ⚙️ Применить и перезапустить
+        </button>
+
+        <!-- Telegram Link -->
+        <div style="margin-top:16px">
+          <label class="form-label">ССЫЛКА ДЛЯ TELEGRAM</label>
+          <div class="tg-link-box mono" id="tg-link-display">Настройте прокси и нажмите «Применить»</div>
+          <button class="btn-copy" id="copy-btn" onclick="copyTgLink()">
+            📋 Копировать ссылку для Telegram
+          </button>
+        </div>
+
+      </div>
+
+      <!-- Update Card -->
+      <div class="card">
+        <div class="card-title">Обновление MTG</div>
+        <div class="update-section">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div>
+              <div style="font-size:13px;font-weight:600;margin-bottom:3px">Бинарный файл mtg</div>
+              <div style="font-size:11px;color:var(--text-3)">Последняя версия с GitHub</div>
+            </div>
+            <div id="update-version-tag" class="tag">—</div>
+          </div>
+          <button class="btn-check" style="margin-top:10px;border-radius:8px;width:100%;text-align:center" onclick="checkUpdate()">
+            🔍 Проверить обновления
+          </button>
+          <button class="btn-update" id="update-btn" onclick="installUpdate()" style="display:none">
+            ⬇️ Установить обновление
+          </button>
+          <div id="update-info" style="font-size:11px;color:var(--text-3);margin-top:8px;display:none"></div>
+        </div>
+      </div>
+
+    </div>
+  </div><!-- /main-content -->
+</div><!-- /dashboard -->
+
+<script>
+// ─── State ─────────────────────────────────────────────────────────────────
+
+let TOKEN = localStorage.getItem('mtg_token') || '';
+let currentTgLink = '';
+let logAutoRefresh = null;
+let statusAutoRefresh = null;
+let portCheckTimer = null;
+
+// ─── Auth ───────────────────────────────────────────────────────────────────
+
+async function doLogin() {
+  const username = document.getElementById('login-username').value.trim();
+  const password = document.getElementById('login-password').value.trim();
+  const btn = document.getElementById('login-btn');
+  const errEl = document.getElementById('login-error');
+
+  if (!username || !password) {
+    errEl.textContent = '⚠️ Введите логин и пароль';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>';
+  errEl.style.display = 'none';
+
+  const form = new FormData();
+  form.append('username', username);
+  form.append('password', password);
+
+  try {
+    const resp = await fetch('/api/auth/token', { method: 'POST', body: form });
+    const data = await resp.json();
+
+    if (!resp.ok) {
+      errEl.textContent = '⚠️ ' + (data.detail || 'Неверный логин или пароль');
+      errEl.style.display = 'block';
+      btn.disabled = false;
+      btn.textContent = 'Войти в панель';
+      return;
+    }
+
+    TOKEN = data.access_token;
+    localStorage.setItem('mtg_token', TOKEN);
+    showDashboard();
+  } catch (e) {
+    errEl.textContent = '⚠️ Ошибка соединения с сервером';
+    errEl.style.display = 'block';
+    btn.disabled = false;
+    btn.textContent = 'Войти в панель';
+  }
+}
+
+function doLogout() {
+  TOKEN = '';
+  localStorage.removeItem('mtg_token');
+  clearInterval(logAutoRefresh);
+  clearInterval(statusAutoRefresh);
+  document.getElementById('dashboard').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+}
+
+// ─── API Helper ──────────────────────────────────────────────────────────────
+
+async function api(method, path, body) {
+  const opts = {
+    method,
+    headers: { 'Authorization': 'Bearer ' + TOKEN }
+  };
+  if (body) {
+    opts.headers['Content-Type'] = 'application/json';
+    opts.body = JSON.stringify(body);
+  }
+  const resp = await fetch(path, opts);
+  if (resp.status === 401) {
+    doLogout();
+    throw new Error('Unauthorized');
+  }
+  return resp;
+}
+
+// ─── Dashboard Init ─────────────────────────────────────────────────────────
+
+function showDashboard() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('dashboard').style.display = 'block';
+
+  fetchStatus();
+  fetchLogs();
+
+  statusAutoRefresh = setInterval(fetchStatus, 5000);
+  logAutoRefresh = setInterval(fetchLogs, 8000);
+}
+
+// ─── Status ─────────────────────────────────────────────────────────────────
+
+async function fetchStatus() {
+  try {
+    const resp = await api('GET', '/api/status');
+    if (!resp.ok) return;
+    const d = await resp.json();
+
+    // Service status
+    const badge = document.getElementById('header-status-badge');
+    const dot = document.getElementById('header-dot');
+    const txt = document.getElementById('header-status-text');
+
+    if (d.service_active) {
+      badge.className = 'status-badge active';
+      dot.className = 'dot green';
+      txt.textContent = 'ЗАПУЩЕН';
+    } else {
+      badge.className = 'status-badge inactive';
+      dot.className = 'dot red';
+      txt.textContent = 'ОСТАНОВЛЕН';
+    }
+
+    // Server IP
+    document.getElementById('server-ip-display').textContent = d.server_ip || '';
+
+    // CPU
+    const cpu = d.cpu_percent;
+    document.getElementById('cpu-value').textContent = cpu + '%';
+    const cpuBar = document.getElementById('cpu-bar');
+    cpuBar.style.width = cpu + '%';
+    cpuBar.className = 'progress-fill' + (cpu > 85 ? ' danger' : cpu > 60 ? ' warn' : '');
+
+    // RAM
+    const ram = d.ram_percent;
+    document.getElementById('ram-value').textContent = ram + '%';
+    document.getElementById('ram-bar').style.width = ram + '%';
+    document.getElementById('ram-detail').textContent = d.ram_used_gb + ' / ' + d.ram_total_gb + ' GB';
+
+    // Config
+    const cfg = d.config || {};
+    if (cfg.port) {
+      document.getElementById('conf-port').value = cfg.port;
+    }
+    if (cfg.fake_tls_domain) {
+      document.getElementById('conf-domain').value = cfg.fake_tls_domain;
+      syncSelectWithInput(cfg.fake_tls_domain);
+    }
+    if (cfg.secret) {
+      document.getElementById('secret-display').textContent = cfg.secret;
+      document.getElementById('conf-secret').value = cfg.secret;
+    }
+
+    // TG Link
+    if (d.tg_link) {
+      currentTgLink = d.tg_link;
+      document.getElementById('tg-link-display').textContent = d.tg_link;
+    }
+
+  } catch (e) { /* silently fail */ }
+}
+
+// ─── Logs ────────────────────────────────────────────────────────────────────
+
+async function fetchLogs() {
+  try {
+    const resp = await api('GET', '/api/logs?lines=50');
+    if (!resp.ok) return;
+    const d = await resp.json();
+
+    const el = document.getElementById('log-output');
+    el.innerHTML = '';
+
+    d.logs.forEach(line => {
+      const div = document.createElement('div');
+      div.className = 'log-line';
+
+      if (/error|fail|crit/i.test(line)) div.className += ' error';
+      else if (/warn/i.test(line)) div.className += ' warn';
+      else if (/start|listen|bind|ready/i.test(line)) div.className += ' key';
+      else if (/info/i.test(line)) div.className += ' info';
+
+      div.textContent = line;
+      el.appendChild(div);
+    });
+
+    el.scrollTop = el.scrollHeight;
+  } catch (e) { /* silently fail */ }
+}
+
+// ─── Config ───────────────────────────────────────────────────────────────────
+
+function domainSelectChanged() {
+  const sel = document.getElementById('conf-domain-select').value;
+  const input = document.getElementById('conf-domain');
+  if (sel === 'custom') {
+    input.value = '';
+    input.focus();
+  } else if (sel) {
+    input.value = sel;
+  }
+}
+
+function syncSelectWithInput(domain) {
+  const sel = document.getElementById('conf-domain-select');
+  let found = false;
+  for (const opt of sel.options) {
+    if (opt.value === domain) { sel.value = domain; found = true; break; }
+  }
+  if (!found) sel.value = 'custom';
+}
+
+function checkPortDebounced() {
+  clearTimeout(portCheckTimer);
+  portCheckTimer = setTimeout(checkPort, 700);
+}
+
+async function checkPort() {
+  const port = parseInt(document.getElementById('conf-port').value);
+  const msgEl = document.getElementById('port-status-msg');
+  if (!port || port < 1 || port > 65535) {
+    msgEl.textContent = '';
+    return;
+  }
+  msgEl.textContent = 'Проверка...';
+  msgEl.className = 'port-status';
+  try {
+    const resp = await api('GET', `/api/check-port/${port}`);
+    const d = await resp.json();
+    if (d.available) {
+      msgEl.textContent = `✓ Порт ${port} свободен`;
+      msgEl.className = 'port-status ok';
+    } else {
+      msgEl.textContent = `✗ Порт ${port} занят другим процессом`;
+      msgEl.className = 'port-status err';
+    }
+  } catch (e) {
+    msgEl.textContent = 'Ошибка проверки';
+    msgEl.className = 'port-status err';
+  }
+}
+
+async function regenSecret() {
+  const domain = document.getElementById('conf-domain').value.trim() || 'itunes.apple.com';
+  try {
+    const resp = await api('GET', `/api/generate-secret?domain=${encodeURIComponent(domain)}`);
+    const d = await resp.json();
+    document.getElementById('secret-display').textContent = d.secret;
+    document.getElementById('conf-secret').value = d.secret;
+    showToast('✓ Новый ключ сгенерирован', 'success');
+  } catch (e) {
+    showToast('Ошибка генерации ключа', 'error');
+  }
+}
+
+async function applyConfig() {
+  const port = parseInt(document.getElementById('conf-port').value);
+  const domain = document.getElementById('conf-domain').value.trim();
+  const secret = document.getElementById('conf-secret').value.trim() || null;
+
+  if (!port || port < 1 || port > 65535) {
+    showToast('⚠️ Укажите корректный порт (1–65535)', 'error');
+    return;
+  }
+  if (!domain) {
+    showToast('⚠️ Укажите домен маскировки', 'error');
+    return;
+  }
+
+  const btn = document.getElementById('apply-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Применяю...';
+
+  try {
+    const resp = await api('POST', '/api/config/apply', { port, fake_tls_domain: domain, secret });
+    const d = await resp.json();
+
+    if (!resp.ok) {
+      showToast('⚠️ ' + (d.detail || 'Ошибка применения конфига'), 'error');
+    } else {
+      showToast('✓ Конфигурация применена, служба перезапущена', 'success');
+      document.getElementById('secret-display').textContent = d.secret;
+      document.getElementById('conf-secret').value = d.secret;
+      if (d.tg_link) {
+        currentTgLink = d.tg_link;
+        document.getElementById('tg-link-display').textContent = d.tg_link;
+      }
+      setTimeout(fetchStatus, 2000);
+    }
+  } catch (e) {
+    showToast('Ошибка соединения', 'error');
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = '⚙️ Применить и перезапустить';
+}
+
+async function serviceAction(action) {
+  try {
+    const resp = await api('POST', `/api/service/${action}`);
+    const d = await resp.json();
+    if (resp.ok) {
+      showToast(`✓ Служба: ${action}`, 'success');
+      setTimeout(fetchStatus, 2000);
+    } else {
+      showToast('⚠️ ' + (d.detail || 'Ошибка'), 'error');
+    }
+  } catch (e) {
+    showToast('Ошибка соединения', 'error');
+  }
+}
+
+function copyTgLink() {
+  if (!currentTgLink) {
+    showToast('⚠️ Сначала примените конфигурацию', 'error');
+    return;
+  }
+  navigator.clipboard.writeText(currentTgLink).then(() => {
+    showToast('✓ Ссылка скопирована в буфер', 'success');
+  }).catch(() => {
+    // Fallback
+    const el = document.createElement('textarea');
+    el.value = currentTgLink;
+    document.body.appendChild(el);
+    el.select();
+    document.execCommand('copy');
+    document.body.removeChild(el);
+    showToast('✓ Ссылка скопирована', 'success');
+  });
+}
+
+// ─── Update ──────────────────────────────────────────────────────────────────
+
+let latestVersion = '';
+
+async function checkUpdate() {
+  showToast('Проверяю обновления...', 'info');
+  try {
+    const resp = await api('GET', '/api/update/check');
+    const d = await resp.json();
+    if (resp.ok) {
+      latestVersion = d.latest_version;
+      document.getElementById('update-version-tag').textContent = d.latest_version;
+      document.getElementById('update-info').textContent = 'Вышла ' + (d.published_at || '').split('T')[0];
+      document.getElementById('update-info').style.display = 'block';
+      document.getElementById('update-btn').style.display = 'block';
+      showToast('Последняя версия: ' + d.latest_version, 'info');
+    }
+  } catch (e) {
+    showToast('Не удалось проверить обновления', 'error');
+  }
+}
+
+async function installUpdate() {
+  if (!confirm('Установить обновление MTG? Прокси будет кратко недоступен.')) return;
+  const btn = document.getElementById('update-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Устанавливаю...';
+  try {
+    const resp = await api('POST', '/api/update/install');
+    const d = await resp.json();
+    if (resp.ok) {
+      showToast('✓ ' + d.message, 'success');
+    } else {
+      showToast('⚠️ ' + (d.detail || 'Ошибка установки'), 'error');
+    }
+  } catch (e) {
+    showToast('Ошибка установки', 'error');
+  }
+  btn.disabled = false;
+  btn.textContent = '⬇️ Установить обновление';
+}
+
+// ─── Toast ───────────────────────────────────────────────────────────────────
+
+let toastTimeout;
+function showToast(msg, type = 'info') {
+  const existing = document.querySelector('.toast');
+  if (existing) existing.remove();
+  clearTimeout(toastTimeout);
+
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.textContent = msg;
+  document.body.appendChild(el);
+  toastTimeout = setTimeout(() => el.remove(), 4000);
+}
+
+// ─── Init ────────────────────────────────────────────────────────────────────
+
+// Enter key for login
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('login-password').addEventListener('keydown', e => {
+    if (e.key === 'Enter') doLogin();
+  });
+  document.getElementById('login-username').addEventListener('keydown', e => {
+    if (e.key === 'Enter') document.getElementById('login-password').focus();
+  });
+
+  // Auto-login if token exists
+  if (TOKEN) {
+    showDashboard();
+  }
+});
+</script>
+</body>
+</html>
