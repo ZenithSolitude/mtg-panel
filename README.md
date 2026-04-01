@@ -5,7 +5,7 @@
 ## Установка одной командой
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/YOUR_USERNAME/mtg-panel/main/install.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/ZenithSolitude/mtg-panel/main/install.sh)
 ```
 
 > Замените `YOUR_USERNAME` на ваш логин GitHub.
