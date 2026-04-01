@@ -69,9 +69,25 @@ info "Скачиваю MTG ${MTG_VER}..."
 wget -q --show-progress -O "${MTG_TMP}/mtg.tar.gz" "$MTG_URL" || err "Не удалось скачать MTG"
 cd "$MTG_TMP"
 tar -xzf mtg.tar.gz
-MTG_BIN=$(find "$MTG_TMP" -maxdepth 3 -type f \
-  ! -name "*.gz" ! -name "*.md" ! -name "LICENSE" ! -name "README*" | head -1)
-[[ -z "$MTG_BIN" ]] && err "Бинарник MTG не найден в архиве"
+
+# Ищем файл с именем ровно "mtg" (бинарник всегда так называется)
+MTG_BIN=$(find "$MTG_TMP" -type f -name "mtg" | head -1)
+
+# Запасной вариант: любой ELF-файл
+if [[ -z "$MTG_BIN" ]]; then
+  MTG_BIN=$(find "$MTG_TMP" -type f | while read f; do
+    head -c 4 "$f" 2>/dev/null | grep -q $'\x7fELF' && echo "$f" && break
+  done)
+fi
+
+[[ -z "$MTG_BIN" ]] && err "Бинарник MTG не найден в архиве. Содержимое: $(find $MTG_TMP -type f)"
+
+# Проверяем что это ELF (исполняемый файл Linux), а не текст
+MAGIC=$(head -c 4 "$MTG_BIN" 2>/dev/null | od -An -tx1 | tr -d ' \n' | head -c 8)
+if [[ "$MAGIC" != "7f454c46" ]]; then
+  err "Скачанный файл не является ELF-бинарником (magic=$MAGIC). Возможно, сервер вернул HTML/текст."
+fi
+
 cp "$MTG_BIN" /usr/local/bin/mtg
 chmod +x /usr/local/bin/mtg
 rm -rf "$MTG_TMP"
@@ -176,10 +192,11 @@ async def tg_send(text):
     except: pass
 
 # ── MTG process management ─────────────────────────
-# MTG v2 синтаксис: mtg run <secret> [--bind addr]
+# MTG v2 использует TOML-конфиг: mtg run /path/to/config.toml
 PROCS: dict = {}
 
 def mtg_gen_secret(fake_tls=True, domain="www.google.com"):
+    """Генерация секрета через mtg generate-secret"""
     try:
         if fake_tls:
             r = subprocess.run(
@@ -187,16 +204,37 @@ def mtg_gen_secret(fake_tls=True, domain="www.google.com"):
                 capture_output=True, text=True, timeout=5)
         else:
             r = subprocess.run(
-                ["mtg", "generate-secret", "--hex", "--no-tls"],
+                ["mtg", "generate-secret", "--hex"],
                 capture_output=True, text=True, timeout=5)
         if r.returncode == 0:
             return r.stdout.strip()
     except: pass
-    # fallback
+    # fallback: генерируем вручную
     raw = os.urandom(16).hex()
     if fake_tls:
         return "ee" + raw + domain.encode().hex()
     return raw
+
+def write_proxy_config(proxy) -> Path:
+    """Создаёт TOML конфиг для MTG v2"""
+    cfg_path = DATA / "proxies" / f"proxy_{proxy['id']}.toml"
+    secret   = proxy["secret"]
+    port     = proxy["port"]
+    # MTG v2 TOML конфиг - минимальный рабочий вариант
+    toml = f'''secret = "{secret}"
+bind-to = "0.0.0.0:{port}"
+concurrency = 8192
+
+[network]
+prefer-ip = "prefer-ipv4"
+
+[network.timeout]
+tcp   = "5s"
+http  = "10s"
+idle  = "1m"
+'''
+    cfg_path.write_text(toml)
+    return cfg_path
 
 def start_proxy(proxy) -> bool:
     pid = proxy["id"]
@@ -206,12 +244,11 @@ def start_proxy(proxy) -> bool:
                 return True
         except: pass
 
-    secret = proxy["secret"]
-    port   = proxy["port"]
-    log_p  = DATA / "logs" / f"proxy_{pid}.log"
+    log_p    = DATA / "logs" / f"proxy_{pid}.log"
+    cfg_path = write_proxy_config(proxy)
 
-    # MTG v2: позиционный аргумент secret ПЕРЕД флагами
-    cmd = ["mtg", "run", secret, "--bind", f"0.0.0.0:{port}"]
+    # MTG v2: mtg run <path_to_config.toml>
+    cmd = ["mtg", "run", str(cfg_path)]
 
     try:
         with open(log_p, "a") as lf:
@@ -220,28 +257,30 @@ def start_proxy(proxy) -> bool:
                 start_new_session=True
             )
         PROCS[pid] = proc
-        time.sleep(0.8)
+        time.sleep(1.0)
         proc.poll()
         if proc.returncode is not None:
-            # Процесс упал — читаем лог
             tail = ""
             if log_p.exists():
                 lines = log_p.read_text().splitlines()
-                tail = " | ".join(lines[-3:])
+                tail = " | ".join(lines[-5:])
             log_event("error", f"MTG завершился (rc={proc.returncode}) {tail}", pid)
             PROCS.pop(pid, None)
             return False
-        log_event("start", f"Запущен порт {port}", pid)
+        log_event("start", f"Запущен порт {proxy['port']}", pid)
         return True
     except Exception as e:
         log_event("error", f"Ошибка запуска: {e}", pid)
         return False
 
-def stop_proxy(proxy_id):
+def stop_proxy(proxy_id, remove_cfg=False):
     proc = PROCS.pop(proxy_id, None)
     if proc:
         try: proc.terminate(); proc.wait(timeout=5)
         except: proc.kill()
+    if remove_cfg:
+        cfg_p = DATA / "proxies" / f"proxy_{proxy_id}.toml"
+        if cfg_p.exists(): cfg_p.unlink()
     log_event("stop", "Остановлен", proxy_id)
 
 def proxy_status(proxy) -> str:
@@ -436,7 +475,7 @@ async def api_del(pid: str, _=Depends(auth_required)):
     proxies = load_proxies()
     proxy   = next((p for p in proxies if p["id"] == pid), None)
     if not proxy: raise HTTPException(404)
-    stop_proxy(pid)
+    stop_proxy(pid, remove_cfg=True)
     save_proxies([p for p in proxies if p["id"] != pid])
     log_event("delete", f"Удалён {proxy['name']}", pid)
     await tg_send(f"🗑 Удалён прокси <b>{proxy['name']}</b>")
